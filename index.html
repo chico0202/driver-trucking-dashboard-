@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام تتبع السائقين - لوحة التحكم</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Tahoma', Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #2c3e50, #4a6491);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            position: relative;
+            z-index: 1000;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .logo i {
+            font-size: 24px;
+        }
+        
+        .logo h1 {
+            font-size: 22px;
+            font-weight: 600;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        button {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .btn-primary {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #2980b9;
+            transform: translateY(-1px);
+        }
+        
+        .btn-success {
+            background-color: #2ecc71;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background-color: #27ae60;
+            transform: translateY(-1px);
+        }
+        
+        .btn-danger {
+            background-color: #e74c3c;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background-color: #c0392b;
+            transform: translateY(-1px);
+        }
+        
+        .btn-warning {
+            background-color: #f39c12;
+            color: white;
+        }
+        
+        .btn-warning:hover {
+            background-color: #d68910;
+            transform: translateY(-1px);
+        }
+        
+        .btn-purple {
+            background-color: #9b59b6;
+            color: white;
+        }
+        
+        .btn-purple:hover {
+            background-color: #8e44ad;
+            transform: translateY(-1px);
+        }
+        
+        .simulation-controls {
+            display: flex;
+            gap: 5px;
+            margin-left: 10px;
+        }
+        
+        .simulation-controls button {
+            padding: 6px 10px;
+            font-size: 12px;
+        }
+        
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        .sidebar {
+            width: 380px;
+            background-color: white;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+        
+        .sidebar.collapsed {
+            width: 0;
+            opacity: 0;
+            overflow: hidden;
+        }
+        
+        .sidebar-toggle {
+            position: absolute;
+            left: -15px;
+            top: 20px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        .stats {
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .stats h2 {
+            font-size: 16px;
+            margin-bottom: 15px;
+            color: #2c3e50;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .stats h2 i {
+            cursor: pointer;
+            color: #7f8c8d;
+            transition: color 0.3s;
+        }
+        
+        .stats h2 i:hover {
+            color: #3498db;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 12px;
+            border-radius: 6px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .stat-card h3 {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-bottom: 5px;
+        }
+        
+        .stat-card p {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .stat-card .stat-trend {
+            font-size: 10px;
+            margin-top: 5px;
+        }
+        
+        .stat-card .trend-up {
+            color: #2ecc71;
+        }
+        
+        .stat-card .trend-down {
+            color: #e74c3c;
+        }
+        
+        .drivers-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+        
+        .drivers-list h2 {
+            font-size: 16px;
+            margin-bottom: 15px;
+            color: #2c3e50;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .driver-filter {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .filter-btn {
+            padding: 4px 8px;
+            font-size: 11px;
+            border-radius: 12px;
+            background: #ecf0f1;
+            color: #7f8c8d;
+            border: none;
+        }
+        
+        .filter-btn.active {
+            background: #3498db;
+            color: white;
+        }
+        
+        .driver-card {
+            background: white;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            border-left: 4px solid #3498db;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+        
+        .driver-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .driver-card.active {
+            border-left: 4px solid #2ecc71;
+            background-color: #f0f9ff;
+            box-shadow: 0 4px 8px rgba(46, 204, 113, 0.2);
+        }
+        
+        .driver-card .driver-id {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: #3498db;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .driver-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            margin-right: 30px;
+        }
+        
+        .driver-name {
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .driver-status {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 12px;
+            background-color: #e74c3c;
+            color: white;
+            font-weight: 500;
+        }
+        
+        .driver-status.available {
+            background-color: #2ecc71;
+        }
+        
+        .driver-status.on-trip {
+            background-color: #3498db;
+        }
+        
+        .driver-status.maintenance {
+            background-color: #f39c12;
+        }
+        
+        .driver-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            font-size: 13px;
+        }
+        
+        .driver-detail {
+            color: #7f8c8d;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .driver-detail span {
+            color: #2c3e50;
+            font-weight: 500;
+        }
+        
+        .driver-actions {
+            display: flex;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        
+        .driver-actions button {
+            padding: 4px 8px;
+            font-size: 11px;
+            flex: 1;
+        }
+        
+        .map-container {
+            flex: 1;
+            position: relative;
+        }
+        
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+        
+        .map-overlay {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            text-align: center;
+            min-width: 200px;
+        }
+        
+        .map-overlay h3 {
+            margin-bottom: 10px;
+            color: #2c3e50;
+            font-size: 16px;
+        }
+        
+        .map-overlay p {
+            font-size: 14px;
+            margin: 5px 0;
+        }
+        
+        .map-overlay .map-controls {
+            display: flex;
+            gap: 5px;
+            margin-top: 10px;
+            justify-content: center;
+        }
+        
+        .driver-info-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            left: 20px;
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            display: none;
+        }
+        
+        .driver-info-panel.active {
+            display: block;
+        }
+        
+        .driver-info-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .driver-info-details {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+        }
+        
+        .driver-info-item h4 {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-bottom: 5px;
+        }
+        
+        .driver-info-item p {
+            font-size: 14px;
+            font-weight: 500;
+            color: #2c3e50;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 5px;
+            background: #ecf0f1;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+        
+        .progress {
+            height: 100%;
+            background: #3498db;
+            border-radius: 3px;
+            transition: width 0.5s;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        .modal-header {
+            padding: 15px 20px;
+            background: #2c3e50;
+            color: white;
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-body {
+            padding: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #2c3e50;
+            font-weight: 500;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .modal-footer {
+            padding: 15px 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #e0e0e0;
+            border-radius: 0 0 8px 8px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        .empty-drivers {
+            text-align: center;
+            padding: 40px 20px;
+            color: #7f8c8d;
+        }
+        
+        .empty-drivers i {
+            font-size: 48px;
+            margin-bottom: 15px;
+            color: #bdc3c7;
+        }
+        
+        .empty-drivers p {
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: 40%;
+            }
+            
+            .sidebar.collapsed {
+                height: 0;
+            }
+            
+            .driver-info-details {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .controls {
+                flex-wrap: wrap;
+                gap: 5px;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #2ecc71;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 4px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transform: translateX(150%);
+            transition: transform 0.5s;
+        }
+        
+        .notification.show {
+            transform: translateX(0);
+        }
+        
+        .notification.warning {
+            background: #f39c12;
+        }
+        
+        .notification.error {
+            background: #e74c3c;
+        }
+        
+        .notification.info {
+            background: #3498db;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <i class="fas fa-car"></i>
+            <h1>نظام تتبع السائقين - لوحة التحكم</h1>
+        </div>
+        <div class="controls">
+            <button id="resetDriversBtn" class="btn-purple"><i class="fas fa-users-slash"></i> إعادة تعيين السائقين</button>
+            <button id="addDriverBtn" class="btn-success"><i class="fas fa-plus"></i> إضافة سائق</button>
+        </div>
+    </header>
+    
+    <div class="container">
+        <div class="sidebar" id="sidebar">
+            <button class="sidebar-toggle" id="sidebarToggle">
+                <i class="fas fa-chevron-right" id="toggleIcon"></i>
+            </button>
+            
+            <div class="stats">
+                <h2>
+                    الإحصائيات العامة
+                    <i class="fas fa-redo-alt" id="refreshStats"></i>
+                </h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>السائقين النشطين</h3>
+                        <p id="activeDrivers">0/0</p>
+                        <div class="stat-trend trend-up" id="activeTrend">+0%</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>متوسط السرعة</h3>
+                        <p id="avgSpeed">0 km/h</p>
+                        <div class="stat-trend trend-down" id="speedTrend">-0%</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>إجمالي المسافات</h3>
+                        <p id="totalDistance">0 km</p>
+                        <div class="stat-trend trend-up" id="distanceTrend">+0%</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>إجمالي الأرباح</h3>
+                        <p id="totalEarnings">0 د.ت</p>
+                        <div class="stat-trend trend-up" id="earningsTrend">+0%</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="drivers-list">
+                <h2>قائمة السائقين <span id="driversCount">(0)</span></h2>
+                
+                <div class="driver-filter">
+                    <button class="filter-btn active" data-filter="all">الكل</button>
+                    <button class="filter-btn" data-filter="available">متاح</button>
+                    <button class="filter-btn" data-filter="trip">في رحلة</button>
+                    <button class="filter-btn" data-filter="unavailable">غير متاح</button>
+                    <button class="filter-btn" data-filter="maintenance">صيانة</button>
+                </div>
+                
+                <div id="driversContainer">
+                    <!-- Driver cards will be generated here -->
+                </div>
+                
+                <div id="emptyDriversMessage" class="empty-drivers">
+                    <i class="fas fa-users-slash"></i>
+                    <p>لا يوجد سائقين في النظام</p>
+                    <button id="addFirstDriverBtn" class="btn-success"><i class="fas fa-plus"></i> إضافة سائق أول</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="map-container">
+            <div id="map"></div>
+            
+            <div class="map-overlay">
+                <h3>خريطة تونس العاصمة</h3>
+                <p>إجمالي السائقين: <strong id="totalDrivers">0</strong></p>
+            </div>
+            
+            <div class="driver-info-panel" id="driverInfoPanel">
+                <div class="driver-info-header">
+                    <h3 id="driverInfoName">اسم السائق</h3>
+                    <button id="closeInfoBtn"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="driver-info-details">
+                    <div class="driver-info-item">
+                        <h4>الحالة</h4>
+                        <p id="infoStatus">متاح</p>
+                    </div>
+                    <div class="driver-info-item">
+                        <h4>الموقع</h4>
+                        <p id="infoLocation">الجزيرة</p>
+                    </div>
+                    <div class="driver-info-item">
+                        <h4>السرعة</h4>
+                        <p id="infoSpeed">0 km/h</p>
+                        <div class="progress-bar">
+                            <div class="progress" id="speedProgress"></div>
+                        </div>
+                    </div>
+                    <div class="driver-info-item">
+                        <h4>الأرباح اليومية</h4>
+                        <p id="infoEarnings">0 د.ت</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal لإضافة سائق -->
+    <div class="modal" id="addDriverModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-user-plus"></i> إضافة سائق جديد</h3>
+                <button id="closeModalBtn"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="driverName">اسم السائق *</label>
+                    <input type="text" id="driverName" class="form-control" placeholder="أدخل اسم السائق">
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="driverStatus">الحالة *</label>
+                        <select id="driverStatus" class="form-control">
+                            <option value="متاح">متاح</option>
+                            <option value="غير متاح">غير متاح</option>
+                            <option value="صيانة">صيانة</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="driverLocation">الموقع *</label>
+                        <select id="driverLocation" class="form-control">
+                            <option value="الجزيرة">الجزيرة</option>
+                            <option value="الحرية">الحرية</option>
+                            <option value="المنزه">المنزه</option>
+                            <option value="حلق الوادي">حلق الوادي</option>
+                            <option value="المرسى">المرسى</option>
+                            <option value="سيدي حسين">سيدي حسين</option>
+                            <option value="باب السعدية">باب السعدية</option>
+                            <option value="باردو">باردو</option>
+                            <option value="الكرم">الكرم</option>
+                            <option value="الخضراء">الخضراء</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="driverSpeed">السرعة (كم/ساعة)</label>
+                        <input type="number" id="driverSpeed" class="form-control" value="60" min="20" max="120">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="driverEarnings">الأرباح اليومية (د.ت)</label>
+                        <input type="number" id="driverEarnings" class="form-control" value="100" min="0">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="driverDistance">المسافة المقطوعة (كم)</label>
+                        <input type="number" id="driverDistance" class="form-control" value="0" min="0" step="0.1">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="driverTrips">عدد الرحلات اليومية</label>
+                        <input type="number" id="driverTrips" class="form-control" value="1" min="0">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="driverNotes">ملاحظات إضافية</label>
+                    <textarea id="driverNotes" class="form-control" rows="3" placeholder="أي ملاحظات إضافية عن السائق"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelAddBtn" class="btn-danger">إلغاء</button>
+                <button id="confirmAddBtn" class="btn-success">إضافة السائق</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="notification" id="notification">
+        <i class="fas fa-check" id="notificationIcon"></i>
+        <span id="notificationText">تم تحديث النظام بنجاح</span>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script>
+        // الخريطة والمواقع
+        let map;
+        let drivers = [];
+        let markers = [];
+        let activeDriverId = null;
+        let driverIdCounter = 0;
+        
+        // أحياء تونس العاصمة وإحداثياتها
+        const tunisNeighborhoods = [
+            {name: "الجزيرة", lat: 36.838, lng: 10.235},
+            {name: "الحرية", lat: 36.835, lng: 10.211},
+            {name: "المنزه", lat: 36.850, lng: 10.188},
+            {name: "حلق الوادي", lat: 36.840, lng: 10.305},
+            {name: "المرسى", lat: 36.880, lng: 10.325},
+            {name: "سيدي حسين", lat: 36.825, lng: 10.105},
+            {name: "باب السعدية", lat: 36.805, lng: 10.175},
+            {name: "باردو", lat: 36.810, lng: 10.135},
+            {name: "الكرم", lat: 36.830, lng: 10.165},
+            {name: "الخضراء", lat: 36.855, lng: 10.205}
+        ];
+        
+        // تهيئة الخريطة
+        function initMap() {
+            map = L.map('map').setView([36.8065, 10.1815], 13);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+            
+            // لا نضيف سائقين أوليين
+            renderDriversList();
+            updateEmptyDriversMessage();
+        }
+        
+        // فتح نموذج إضافة سائق
+        function openAddDriverModal() {
+            document.getElementById('addDriverModal').classList.add('active');
+            document.getElementById('driverName').focus();
+        }
+        
+        // إغلاق نموذج إضافة سائق
+        function closeAddDriverModal() {
+            document.getElementById('addDriverModal').classList.remove('active');
+            // إعادة تعيين الحقول
+            document.getElementById('driverName').value = '';
+            document.getElementById('driverStatus').value = 'متاح';
+            document.getElementById('driverLocation').value = 'الجزيرة';
+            document.getElementById('driverSpeed').value = '60';
+            document.getElementById('driverEarnings').value = '100';
+            document.getElementById('driverDistance').value = '0';
+            document.getElementById('driverTrips').value = '1';
+            document.getElementById('driverNotes').value = '';
+        }
+        
+        // إضافة سائق جديد يدوياً
+        function addDriverManually() {
+            const name = document.getElementById('driverName').value.trim();
+            const status = document.getElementById('driverStatus').value;
+            const location = document.getElementById('driverLocation').value;
+            const speed = parseInt(document.getElementById('driverSpeed').value);
+            const earnings = parseInt(document.getElementById('driverEarnings').value);
+            const distance = parseFloat(document.getElementById('driverDistance').value);
+            const tripsToday = parseInt(document.getElementById('driverTrips').value);
+            const notes = document.getElementById('driverNotes').value.trim();
+            
+            // التحقق من الحقول المطلوبة
+            if (!name) {
+                showNotification("الرجاء إدخال اسم السائق", "error");
+                document.getElementById('driverName').focus();
+                return;
+            }
+            
+            if (!location) {
+                showNotification("الرجاء تحديد موقع السائق", "error");
+                return;
+            }
+            
+            // إنشاء معرف فريد للسائق
+            driverIdCounter++;
+            
+            // البحث عن إحداثيات الموقع المحدد
+            const neighborhood = tunisNeighborhoods.find(n => n.name === location);
+            let lat, lng;
+            
+            if (neighborhood) {
+                // إضافة تغيير بسيط في الإحداثيات لجعلها مختلفة قليلاً
+                lat = neighborhood.lat + (Math.random() - 0.5) * 0.01;
+                lng = neighborhood.lng + (Math.random() - 0.5) * 0.01;
+            } else {
+                // إذا لم يجد الموقع، استخدم موقع افتراضي
+                lat = 36.8065 + (Math.random() - 0.5) * 0.02;
+                lng = 10.1815 + (Math.random() - 0.5) * 0.02;
+            }
+            
+            // إنشاء كائن السائق الجديد
+            const newDriver = {
+                id: driverIdCounter,
+                name: name,
+                status: status,
+                location: location,
+                lat: lat,
+                lng: lng,
+                distance: distance,
+                cost: earnings,
+                speed: speed,
+                onTrip: false,
+                tripDistance: 0,
+                tripCost: 0,
+                destination: tunisNeighborhoods[Math.floor(Math.random() * tunisNeighborhoods.length)].name,
+                earnings: earnings,
+                rating: (Math.random() * 2 + 3).toFixed(1),
+                tripsToday: tripsToday,
+                joinDate: new Date().toLocaleDateString('ar-TN'),
+                notes: notes
+            };
+            
+            // إضافة السائق إلى المصفوفة
+            drivers.push(newDriver);
+            
+            // تحديث الواجهة
+            renderDriversList();
+            placeMarkers();
+            updateStats();
+            updateEmptyDriversMessage();
+            
+            // إغلاق النموذج
+            closeAddDriverModal();
+            
+            // إظهار إشعار النجاح
+            showNotification(`تم إضافة السائق ${name} بنجاح`, "success");
+            
+            // التركيز على السائق الجديد
+            setTimeout(() => {
+                selectDriver(newDriver.id);
+            }, 500);
+        }
+        
+        // إعادة تعيين جميع السائقين
+        function resetAllDrivers() {
+            if (drivers.length > 0) {
+                // تأكيد من المستخدم
+                if (!confirm("هل أنت متأكد من إعادة تعيين جميع السائقين؟ سيتم حذف جميع السائقين الحاليين.")) {
+                    return;
+                }
+                
+                drivers = [];
+                markers.forEach(marker => map.removeLayer(marker));
+                markers = [];
+                driverIdCounter = 0;
+                activeDriverId = null;
+                closeDriverInfo();
+                
+                renderDriversList();
+                updateStats();
+                updateEmptyDriversMessage();
+                showNotification("تم إعادة تعيين جميع السائقين بنجاح", "warning");
+            } else {
+                showNotification("لا يوجد سائقين لإعادة التعيين", "info");
+            }
+        }
+        
+        // تحديث رسالة عدم وجود سائقين
+        function updateEmptyDriversMessage() {
+            const emptyMessage = document.getElementById('emptyDriversMessage');
+            const driversContainer = document.getElementById('driversContainer');
+            
+            if (drivers.length === 0) {
+                emptyMessage.style.display = 'block';
+                driversContainer.style.display = 'none';
+            } else {
+                emptyMessage.style.display = 'none';
+                driversContainer.style.display = 'block';
+            }
+        }
+        
+        // وضع علامات على الخريطة
+        function placeMarkers() {
+            // إزالة العلامات القديمة إذا وجدت
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+            
+            drivers.forEach(driver => {
+                // تحديد لون العلامة بناءً على حالة السائق
+                let iconColor;
+                if (driver.onTrip) {
+                    iconColor = '#3498db'; // أزرق للرحلة
+                } else if (driver.status === 'متاح') {
+                    iconColor = '#2ecc71'; // أخضر للمتاح
+                } else if (driver.status === 'صيانة') {
+                    iconColor = '#f39c12'; // برتقالي للصيانة
+                } else {
+                    iconColor = '#e74c3c'; // أحمر لغير المتاح
+                }
+                
+                const markerIcon = L.divIcon({
+                    html: `<div style="background-color: ${iconColor}; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: bold;">${driver.id}</div>`,
+                    className: 'custom-marker',
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 12]
+                });
+                
+                const marker = L.marker([driver.lat, driver.lng], {icon: markerIcon})
+                    .addTo(map)
+                    .bindPopup(`
+                        <div style="text-align: right; min-width: 200px;">
+                            <b>${driver.name}</b><br>
+                            <small>رقم: ${driver.id}</small><br>
+                            <hr style="margin: 5px 0;">
+                            الموقع: ${driver.location}<br>
+                            الحالة: ${driver.onTrip ? 'في رحلة' : driver.status}<br>
+                            السرعة: ${driver.speed} كم/ساعة<br>
+                            الأرباح: ${driver.cost} د.ت
+                        </div>
+                    `);
+                
+                marker.on('click', () => {
+                    selectDriver(driver.id);
+                });
+                
+                markers.push(marker);
+            });
+        }
+        
+        // عرض قائمة السائقين مع التصفية
+        function renderDriversList(filter = 'all') {
+            const container = document.getElementById('driversContainer');
+            container.innerHTML = '';
+            
+            let filteredDrivers = drivers;
+            if (filter !== 'all') {
+                filteredDrivers = drivers.filter(driver => {
+                    if (filter === 'available') return driver.status === 'متاح' && !driver.onTrip;
+                    if (filter === 'trip') return driver.onTrip;
+                    if (filter === 'unavailable') return driver.status === 'غير متاح';
+                    if (filter === 'maintenance') return driver.status === 'صيانة';
+                    return true;
+                });
+            }
+            
+            filteredDrivers.forEach(driver => {
+                const card = document.createElement('div');
+                card.className = 'driver-card';
+                if (driver.id === activeDriverId) {
+                    card.classList.add('active');
+                }
+                
+                // تحديد حالة السائق
+                let statusClass = '';
+                let statusText = '';
+                
+                if (driver.onTrip) {
+                    statusClass = 'on-trip';
+                    statusText = 'في رحلة';
+                } else if (driver.status === 'متاح') {
+                    statusClass = 'available';
+                    statusText = 'متاح';
+                } else if (driver.status === 'صيانة') {
+                    statusClass = 'maintenance';
+                    statusText = 'صيانة';
+                } else {
+                    statusText = 'غير متاح';
+                }
+                
+                card.innerHTML = `
+                    <div class="driver-id">${driver.id}</div>
+                    <div class="driver-header">
+                        <div class="driver-name">${driver.name}</div>
+                        <div class="driver-status ${statusClass}">
+                            ${statusText}
+                        </div>
+                    </div>
+                    <div class="driver-details">
+                        <div class="driver-detail">
+                            المسافة اليومية:
+                            <span>${driver.distance.toFixed(1)} km</span>
+                        </div>
+                        <div class="driver-detail">
+                            الأرباح اليومية:
+                            <span>${driver.cost.toFixed(1)} د.ت</span>
+                        </div>
+                        <div class="driver-detail">
+                            السرعة:
+                            <span>${driver.speed} km/h</span>
+                        </div>
+                        <div class="driver-detail">
+                            الموقع:
+                            <span>${driver.location}</span>
+                        </div>
+                    </div>
+                    <div class="driver-actions">
+                        <button class="btn-primary btn-small" onclick="focusOnDriver(${driver.id})">
+                            <i class="fas fa-map-marker-alt"></i> التركيز
+                        </button>
+                        <button class="btn-warning btn-small" onclick="changeDriverStatus(${driver.id})">
+                            <i class="fas fa-sync-alt"></i> تغيير الحالة
+                        </button>
+                        <button class="btn-danger btn-small" onclick="removeDriver(${driver.id})">
+                            <i class="fas fa-trash"></i> حذف
+                        </button>
+                    </div>
+                `;
+                
+                card.addEventListener('click', (e) => {
+                    // تجنب النقر على الأزرار الداخلية
+                    if (!e.target.closest('button')) {
+                        selectDriver(driver.id);
+                    }
+                });
+                
+                container.appendChild(card);
+            });
+            
+            // تحديث العداد
+            document.getElementById('totalDrivers').textContent = drivers.length;
+            document.getElementById('driversCount').textContent = `(${drivers.length})`;
+        }
+        
+        // حذف سائق
+        function removeDriver(driverId) {
+            if (!confirm("هل أنت متأكد من حذف هذا السائق؟")) {
+                return;
+            }
+            
+            const driverIndex = drivers.findIndex(d => d.id === driverId);
+            if (driverIndex !== -1) {
+                const driverName = drivers[driverIndex].name;
+                
+                // إزالة السائق
+                drivers.splice(driverIndex, 1);
+                
+                // إزالة العلامة من الخريطة
+                if (markers[driverIndex]) {
+                    map.removeLayer(markers[driverIndex]);
+                    markers.splice(driverIndex, 1);
+                }
+                
+                // إغلاق نافذة المعلومات إذا كانت مفتوحة لهذا السائق
+                if (activeDriverId === driverId) {
+                    closeDriverInfo();
+                    activeDriverId = null;
+                }
+                
+                // تحديث الواجهة
+                renderDriversList();
+                updateStats();
+                updateEmptyDriversMessage();
+                
+                showNotification(`تم حذف السائق ${driverName} بنجاح`, "success");
+            }
+        }
+        
+        // التركيز على سائق معين
+        function focusOnDriver(driverId) {
+            selectDriver(driverId);
+            showNotification(`تم التركيز على السائق ${driverId}`, "success");
+        }
+        
+        // تغيير حالة السائق
+        function changeDriverStatus(driverId) {
+            const driver = drivers.find(d => d.id === driverId);
+            if (!driver) return;
+            
+            const statuses = ["متاح", "غير متاح", "صيانة"];
+            const currentIndex = statuses.indexOf(driver.status);
+            const nextIndex = (currentIndex + 1) % statuses.length;
+            
+            driver.status = statuses[nextIndex];
+            driver.onTrip = false; // إلغاء أي رحلة حالية
+            
+            renderDriversList(document.querySelector('.filter-btn.active').dataset.filter);
+            placeMarkers();
+            updateStats();
+            
+            if (activeDriverId === driverId) {
+                openDriverInfo(driver);
+            }
+            
+            showNotification(`تم تغيير حالة السائق ${driver.name} إلى ${driver.status}`, "success");
+        }
+        
+        // تحديد سائق
+        function selectDriver(driverId) {
+            const driver = drivers.find(d => d.id === driverId);
+            if (!driver) return;
+            
+            activeDriverId = driverId;
+            
+            // تحديث قائمة السائقين
+            renderDriversList(document.querySelector('.filter-btn.active').dataset.filter);
+            
+            // التركيز على السائق على الخريطة
+            map.setView([driver.lat, driver.lng], 14);
+            
+            // فتح نافذة المعلومات
+            openDriverInfo(driver);
+            
+            // فتح البوب أب
+            const driverIndex = drivers.findIndex(d => d.id === driverId);
+            if (driverIndex !== -1 && markers[driverIndex]) {
+                markers[driverIndex].openPopup();
+            }
+        }
+        
+        // فتح نافذة معلومات السائق
+        function openDriverInfo(driver) {
+            const panel = document.getElementById('driverInfoPanel');
+            panel.classList.add('active');
+            
+            document.getElementById('driverInfoName').textContent = `${driver.name} (رقم: ${driver.id})`;
+            
+            // تحديث حالة السائق
+            let statusText = driver.onTrip ? 'في رحلة' : driver.status;
+            document.getElementById('infoStatus').textContent = statusText;
+            
+            document.getElementById('infoLocation').textContent = driver.location;
+            document.getElementById('infoSpeed').textContent = `${driver.speed} km/h`;
+            document.getElementById('infoEarnings').textContent = `${driver.cost.toFixed(1)} د.ت`;
+            
+            // تحديث شريط السرعة
+            const speedProgress = document.getElementById('speedProgress');
+            const speedPercentage = Math.min(driver.speed / 100 * 100, 100);
+            speedProgress.style.width = `${speedPercentage}%`;
+            
+            // تغيير لون شريط السرعة حسب السرعة
+            if (driver.speed > 80) {
+                speedProgress.style.background = '#e74c3c';
+            } else if (driver.speed > 60) {
+                speedProgress.style.background = '#f39c12';
+            } else {
+                speedProgress.style.background = '#2ecc71';
+            }
+        }
+        
+        // إغلاق نافذة معلومات السائق
+        function closeDriverInfo() {
+            document.getElementById('driverInfoPanel').classList.remove('active');
+            activeDriverId = null;
+            renderDriversList(document.querySelector('.filter-btn.active').dataset.filter);
+        }
+        
+        // حساب الإحصائيات الحالية
+        function calculateCurrentStats() {
+            const activeDrivers = drivers.filter(d => d.status === 'متاح' && !d.onTrip).length;
+            const onTripDrivers = drivers.filter(d => d.onTrip).length;
+            const totalDistance = drivers.reduce((sum, driver) => sum + driver.distance, 0);
+            const totalEarnings = drivers.reduce((sum, driver) => sum + driver.cost, 0);
+            const avgSpeed = drivers.length > 0 ? Math.round(drivers.reduce((sum, driver) => sum + driver.speed, 0) / drivers.length) : 0;
+            
+            return {
+                activeDrivers,
+                onTripDrivers,
+                totalDistance,
+                totalEarnings,
+                avgSpeed
+            };
+        }
+        
+        // تحديث الإحصائيات مع اتجاهات
+        function updateStats() {
+            const currentStats = calculateCurrentStats();
+            
+            document.getElementById('activeDrivers').textContent = `${currentStats.activeDrivers}/${drivers.length}`;
+            document.getElementById('totalDistance').textContent = `${Math.round(currentStats.totalDistance)} km`;
+            document.getElementById('totalEarnings').textContent = `${Math.round(currentStats.totalEarnings)} د.ت`;
+            document.getElementById('avgSpeed').textContent = `${currentStats.avgSpeed} km/h`;
+        }
+        
+        // إظهار إشعار
+        function showNotification(message, type = "success") {
+            const notification = document.getElementById('notification');
+            const text = document.getElementById('notificationText');
+            const icon = document.getElementById('notificationIcon');
+            
+            text.textContent = message;
+            
+            // تغيير الأيقونة حسب نوع الإشعار
+            switch(type) {
+                case "success":
+                    icon.className = "fas fa-check";
+                    break;
+                case "warning":
+                    icon.className = "fas fa-exclamation-triangle";
+                    break;
+                case "error":
+                    icon.className = "fas fa-times-circle";
+                    break;
+                case "info":
+                    icon.className = "fas fa-info-circle";
+                    break;
+            }
+            
+            notification.className = `notification ${type}`;
+            notification.classList.add('show');
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+        
+        // تصفية قائمة السائقين
+        function filterDrivers(filter) {
+            // تحديث أزرار التصفية
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            renderDriversList(filter);
+        }
+        
+        // تحديث الإحصائيات يدوياً
+        function refreshStats() {
+            updateStats();
+            showNotification("تم تحديث الإحصائيات", "success");
+        }
+        
+        // تبديل الشريط الجانبي
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const toggleIcon = document.getElementById('toggleIcon');
+            
+            sidebar.classList.toggle('collapsed');
+            if (sidebar.classList.contains('collapsed')) {
+                toggleIcon.className = 'fas fa-chevron-left';
+            } else {
+                toggleIcon.className = 'fas fa-chevron-right';
+            }
+        }
+        
+        // تهيئة النظام عند تحميل الصفحة
+        window.onload = function() {
+            initMap();
+            
+            // إضافة معالجي الأحداث للأزرار
+            document.getElementById('addDriverBtn').addEventListener('click', openAddDriverModal);
+            document.getElementById('addFirstDriverBtn').addEventListener('click', openAddDriverModal);
+            document.getElementById('resetDriversBtn').addEventListener('click', resetAllDrivers);
+            document.getElementById('closeModalBtn').addEventListener('click', closeAddDriverModal);
+            document.getElementById('cancelAddBtn').addEventListener('click', closeAddDriverModal);
+            document.getElementById('confirmAddBtn').addEventListener('click', addDriverManually);
+            document.getElementById('closeInfoBtn').addEventListener('click', closeDriverInfo);
+            document.getElementById('refreshStats').addEventListener('click', refreshStats);
+            document.getElementById('sidebarToggle').addEventListener('click', toggleSidebar);
+            
+            // السماح بإغلاق النموذج بالضغط على ESC
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && document.getElementById('addDriverModal').classList.contains('active')) {
+                    closeAddDriverModal();
+                }
+            });
+            
+            // إضافة معالجي الأحداث لأزرار التصفية
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    filterDrivers(btn.dataset.filter);
+                });
+            });
+            
+            // إغلاق نافذة المعلومات عند النقر خارجها
+            document.addEventListener('click', (e) => {
+                const panel = document.getElementById('driverInfoPanel');
+                const closeBtn = document.getElementById('closeInfoBtn');
+                
+                if (panel.classList.contains('active') && 
+                    !panel.contains(e.target) && 
+                    e.target !== closeBtn && 
+                    !closeBtn.contains(e.target)) {
+                    closeDriverInfo();
+                }
+            });
+        };
+    </script>
+</body>
+</html>
